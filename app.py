@@ -7,9 +7,8 @@ from elasticsearch import Elasticsearch
 # Elasticsearch configuration
 ES_INDEX = 'srilanka_raw_data'
 es = Elasticsearch(
-
-    cloud_id=os.getenv("cloud_id"),
-    api_key=os.getenv("api_key")
+    cloud_id="social_data:Y2VudHJhbGluZGlhLmF6dXJlLmVsYXN0aWMtY2xvdWQuY29tOjQ0MyRjMjFiZjk3YTE0ZTY0ZDlkOTc0MDJmZjJmNTY3YmIyYiQ1Mjc0MjY4MmY2MTM0NDdjYTE3MjBmZGZkNDI5ZDJmMQ==",
+    api_key="TndRRjZKQUJ1bms0VS1NZkJKNjc6WFhQTjhPMmJTSG1RTDc0dWh6ZThWUQ=="
 )
 
 # Define Streamlit app
@@ -229,10 +228,11 @@ def format_data(data, show_content):
                         news.get('views', 'N/A'),
                         news.get('shares', 'N/A'),
                         ', '.join(news.get('media', [])),
-                        news.get('source', 'N/A')
+                        news.get('source', 'N/A'),
+                        news.get('datetime', 'N/A')
                     ])
 
-    df = pd.DataFrame(rows, columns=['ID', 'URL', 'Content', 'Likes', 'Views', 'Shares', 'Media', 'Source'])
+    df = pd.DataFrame(rows, columns=['ID', 'URL', 'Content', 'Likes', 'Views', 'Shares', 'Media', 'Source','datetime'])
     return df
 
 if __name__ == '__main__':
