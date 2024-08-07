@@ -3,26 +3,59 @@ import os
 import pandas as pd
 import streamlit as st
 from elasticsearch import Elasticsearch
-
-# Elasticsearch configuration
 ES_INDEX = 'srilanka_raw_data'
 es = Elasticsearch(
-    cloud_id="social_data:Y2VudHJhbGluZGlhLmF6dXJlLmVsYXN0aWMtY2xvdWQuY29tOjQ0MyRjMjFiZjk3YTE0ZTY0ZDlkOTc0MDJmZjJmNTY3YmIyYiQ1Mjc0MjY4MmY2MTM0NDdjYTE3MjBmZGZkNDI5ZDJmMQ==",
-    api_key="TndRRjZKQUJ1bms0VS1NZkJKNjc6WFhQTjhPMmJTSG1RTDc0dWh6ZThWUQ=="
+    cloud_id=os.getenv("cloud_id"),
+    api_key=os.getenv("api_key")
 )
 
 # Define Streamlit app
+# def main():
+#     st.title('Sri Lanka News Data')
+#
+#     # Retrieve unique values for dropdowns
+#     unique_provinces, _ = get_unique_provinces_and_districts()
+#
+#     # Select province
+#     selected_province = st.selectbox('Select Province', unique_provinces)
+#     if selected_province:
+#         unique_districts = get_districts_by_province(selected_province)
+#         selected_district = st.selectbox('Select District (Optional)', unique_districts + ['None'])
+#     else:
+#         selected_district = None
+#
+#     # Checkbox to show/hide content
+#     show_content = st.checkbox('Show Content', value=False)
+#
+#     if st.button('Fetch Data'):
+#         if selected_province:
+#             data = query_elasticsearch(selected_province, selected_district)
+#             data = query_elasticsearch(selected_province, selected_district)
+#             total_count = len(data)
+#             st.write(f"Total feeds: {total_count}")
+#             if data:
+#                 st.write(f"Showing data for Province: {selected_province} and District: {selected_district}")
+#                 df = format_data(data, show_content)
+#                 st.dataframe(df, width=1200)  # Adjust the width as needed
+#             else:
+#                 st.write("No data found.")
+#         else:
+#             st.write("Please select a province.")
+
+
 def main():
     st.title('Sri Lanka News Data')
 
     # Retrieve unique values for dropdowns
     unique_provinces, _ = get_unique_provinces_and_districts()
+    unique_provinces = ['All Provinces'] + unique_provinces
 
     # Select province
     selected_province = st.selectbox('Select Province', unique_provinces)
-    if selected_province:
+    if selected_province and selected_province != 'All Provinces':
         unique_districts = get_districts_by_province(selected_province)
-        selected_district = st.selectbox('Select District (Optional)', unique_districts + ['None'])
+        # unique_districts = ['All Districts'] + unique_districts
+        selected_district = st.selectbox('Select District (Optional)', unique_districts)
     else:
         selected_district = None
 
@@ -30,19 +63,22 @@ def main():
     show_content = st.checkbox('Show Content', value=False)
 
     if st.button('Fetch Data'):
-        if selected_province:
-            data = query_elasticsearch(selected_province, selected_district)
-            data = query_elasticsearch(selected_province, selected_district)
-            total_count = len(data)
-            st.write(f"Total feeds: {total_count}")
-            if data:
-                st.write(f"Showing data for Province: {selected_province} and District: {selected_district}")
-                df = format_data(data, show_content)
-                st.dataframe(df, width=1200)  # Adjust the width as needed
+        data = query_elasticsearch(selected_province, selected_district)
+        total_count = len(data)
+        st.write(f"Total feeds: {total_count}")
+        if data:
+            if selected_province == 'All Provinces':
+                st.write(f"Showing data for all provinces")
+            # elif selected_district == 'All Districts':
+            #     st.write(f"Showing data for Province: {selected_province} and all districts")
             else:
-                st.write("No data found.")
+                st.write(f"Showing data for Province: {selected_province} and District: {selected_district}")
+
+            df = format_data(data, show_content)
+            st.dataframe(df, width=1200)  # Adjust the width as needed
         else:
-            st.write("Please select a province.")
+            st.write("No data found.")
+
 
 def get_unique_provinces_and_districts():
     province_query = {
@@ -124,7 +160,14 @@ def get_districts_by_province(province):
         st.error(f"An error occurred: {e}")
         return []
 def query_elasticsearch(province, district):
-    if district and district!='None':
+    if province == 'All Provinces':
+            query = {
+                "query": {
+                    "match_all": {}
+                },
+                "size": 5000
+            }
+    elif district and district!='None':
             query = {
                 "query": {
                     "bool": {
@@ -215,24 +258,31 @@ def format_data(data, show_content):
                     news_list = [news_list]
 
                 for news in news_list:
-                    # Conditionally truncate content based on checkbox state
                     content = news.get('content', '')
                     if not show_content:
-                        content = content[:50]  # Truncate to 100 chars if not showing full content
+                        content = content[:50]
+                    media = news.get('media', [])
+                    if not isinstance(media, list):
+                        if media is None:
+                            media = []
+                        elif isinstance(media, str):
+                            media = [media]
+                        else:
+                            st.write(f"Unexpected media type: {type(media)} - {media}")
+                            media = []
 
                     rows.append([
-                        str(news.get('id', '')[:50]),   # Truncate to 50 chars
-                        str(news.get('url', '')[:50]),  # Truncate to 50 chars
+                        str(news.get('id', '')[:50]),
+                        str(news.get('url', '')[:50]),
                         content,
                         news.get('likes', 'N/A'),
                         news.get('views', 'N/A'),
                         news.get('shares', 'N/A'),
-                        ', '.join(news.get('media', [])),
-                        news.get('source', 'N/A'),
-                        news.get('datetime', 'N/A')
+                        ', '.join(media),
+                        news.get('source', 'N/A')
                     ])
 
-    df = pd.DataFrame(rows, columns=['ID', 'URL', 'Content', 'Likes', 'Views', 'Shares', 'Media', 'Source','datetime'])
+    df = pd.DataFrame(rows, columns=['ID', 'URL', 'Content', 'Likes', 'Views', 'Shares', 'Media', 'Source'])
     return df
 
 if __name__ == '__main__':
