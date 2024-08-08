@@ -5,8 +5,10 @@ import streamlit as st
 from elasticsearch import Elasticsearch
 ES_INDEX = 'srilanka_raw_data'
 es = Elasticsearch(
-    cloud_id=os.getenv("cloud_id"),
-    api_key=os.getenv("api_key")
+    # cloud_id=os.getenv("cloud_id"),
+    # api_key=os.getenv("api_key")
+  cloud_id="social_data:Y2VudHJhbGluZGlhLmF6dXJlLmVsYXN0aWMtY2xvdWQuY29tOjQ0MyRjMjFiZjk3YTE0ZTY0ZDlkOTc0MDJmZjJmNTY3YmIyYiQ1Mjc0MjY4MmY2MTM0NDdjYTE3MjBmZGZkNDI5ZDJmMQ==",
+    api_key="TndRRjZKQUJ1bms0VS1NZkJKNjc6WFhQTjhPMmJTSG1RTDc0dWh6ZThWUQ=="
 
 )
 
@@ -303,8 +305,8 @@ def format_data(data, show_content):
                             media = []
 
                     rows.append([
-                        str(news.get('id', '')[:50]),
-                        str(news.get('url', '')[:50]),
+                        str(news.get('id', '')[:10]),
+                        str(news.get('url', '')),
                         content,
                         news.get('likes', 'N/A'),
                         news.get('views', 'N/A'),
