@@ -7,6 +7,7 @@ ES_INDEX = 'srilanka_raw_data'
 es = Elasticsearch(
     cloud_id=os.getenv("cloud_id"),
     api_key=os.getenv("api_key")
+
 )
 
 # Define Streamlit app
@@ -54,7 +55,7 @@ def main():
     selected_province = st.selectbox('Select Province', unique_provinces)
     if selected_province and selected_province != 'All Provinces':
         unique_districts = get_districts_by_province(selected_province)
-        # unique_districts = ['All Districts'] + unique_districts
+        unique_districts = ['All Districts'] + unique_districts
         selected_district = st.selectbox('Select District (Optional)', unique_districts)
     else:
         selected_district = None
@@ -69,8 +70,8 @@ def main():
         if data:
             if selected_province == 'All Provinces':
                 st.write(f"Showing data for all provinces")
-            # elif selected_district == 'All Districts':
-            #     st.write(f"Showing data for Province: {selected_province} and all districts")
+            elif selected_district == 'All Districts':
+                st.write(f"Showing data for Province: {selected_province} and all districts")
             else:
                 st.write(f"Showing data for Province: {selected_province} and District: {selected_district}")
 
@@ -162,12 +163,22 @@ def get_districts_by_province(province):
 def query_elasticsearch(province, district):
     if province == 'All Provinces':
             query = {
-                "query": {
-                    "match_all": {}
-                },
-                "size": 5000
+              "query": {
+                "match_all": {}
+              },
+              "size": 5000,
+              "sort": [
+                {
+                  "sri_lanka.province.district.news.datetime": {
+                    "order": "desc",
+                    "nested": {
+                      "path": "sri_lanka.province.district.news"
+                    }
+                  }
+                }
+              ]
             }
-    elif district and district!='None':
+    elif district and district!='All Districts':
             query = {
                 "query": {
                     "bool": {
@@ -207,7 +218,17 @@ def query_elasticsearch(province, district):
                         ]
                     }
                 },
-            "size": 5000
+            "size": 5000,
+                "sort": [
+                    {
+                        "sri_lanka.province.district.news.datetime": {
+                            "order": "desc",
+                            "nested": {
+                                "path": "sri_lanka.province.district.news"
+                            }
+                        }
+                    }
+                ]
 
             }
     else:
@@ -228,7 +249,17 @@ def query_elasticsearch(province, district):
               }
             }
           },
-            "size": 5000
+            "size": 5000,
+            "sort": [
+                {
+                    "sri_lanka.province.district.news.datetime": {
+                        "order": "desc",
+                        "nested": {
+                            "path": "sri_lanka.province.district.news"
+                        }
+                    }
+                }
+            ]
 
         }
 
@@ -279,10 +310,11 @@ def format_data(data, show_content):
                         news.get('views', 'N/A'),
                         news.get('shares', 'N/A'),
                         ', '.join(media),
-                        news.get('source', 'N/A')
+                        news.get('source', 'N/A'),
+                        news.get('datetime', 'N/A')
                     ])
 
-    df = pd.DataFrame(rows, columns=['ID', 'URL', 'Content', 'Likes', 'Views', 'Shares', 'Media', 'Source'])
+    df = pd.DataFrame(rows, columns=['ID', 'URL', 'Content', 'Likes', 'Views', 'Shares', 'Media', 'Source', 'datetime'])
     return df
 
 if __name__ == '__main__':
