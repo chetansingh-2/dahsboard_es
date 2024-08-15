@@ -292,7 +292,7 @@ def format_data(data, show_content):
 
                 for news in news_list:
                     content = news.get('content', '')
-                    if not show_content:
+                    if not show_content and content:
                         content = content[:50]
                     media = news.get('media', [])
                     if not isinstance(media, list):
