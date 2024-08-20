@@ -1,57 +1,27 @@
 import os
-
 import pandas as pd
 import streamlit as st
 from elasticsearch import Elasticsearch
-ES_INDEX = 'srilanka_raw_data'
+
 es = Elasticsearch(
     cloud_id=os.getenv("cloud_id"),
     api_key=os.getenv("api_key")
-
 )
-
-# Define Streamlit app
-# def main():
-#     st.title('Sri Lanka News Data')
-#
-#     # Retrieve unique values for dropdowns
-#     unique_provinces, _ = get_unique_provinces_and_districts()
-#
-#     # Select province
-#     selected_province = st.selectbox('Select Province', unique_provinces)
-#     if selected_province:
-#         unique_districts = get_districts_by_province(selected_province)
-#         selected_district = st.selectbox('Select District (Optional)', unique_districts + ['None'])
-#     else:
-#         selected_district = None
-#
-#     # Checkbox to show/hide content
-#     show_content = st.checkbox('Show Content', value=False)
-#
-#     if st.button('Fetch Data'):
-#         if selected_province:
-#             data = query_elasticsearch(selected_province, selected_district)
-#             data = query_elasticsearch(selected_province, selected_district)
-#             total_count = len(data)
-#             st.write(f"Total feeds: {total_count}")
-#             if data:
-#                 st.write(f"Showing data for Province: {selected_province} and District: {selected_district}")
-#                 df = format_data(data, show_content)
-#                 st.dataframe(df, width=1200)  # Adjust the width as needed
-#             else:
-#                 st.write("No data found.")
-#         else:
-#             st.write("Please select a province.")
-
-
 def main():
-    st.title('Sri Lanka News Data')
+    st.title('News Feeds and Constituency Mapping Dashboard')
+    tab1, tab2 = st.tabs(["Sri Lanka News Feeds", "India News Feeds"])
+    with tab1:
+        st.header("Sri Lanka News Feeds")
+        handle_sri_lanka_feed()
 
-    # Retrieve unique values for dropdowns
+    with tab2:
+        st.header("India News Feeds")
+        handle_india_mapping()
+
+def handle_sri_lanka_feed():
+    # Your existing Sri Lanka feed logic here
     unique_provinces, _ = get_unique_provinces_and_districts()
     unique_provinces = ['All Provinces'] + unique_provinces
-
-    # Select province
     selected_province = st.selectbox('Select Province', unique_provinces)
     if selected_province and selected_province != 'All Provinces':
         unique_districts = get_districts_by_province(selected_province)
@@ -60,11 +30,10 @@ def main():
     else:
         selected_district = None
 
-    # Checkbox to show/hide content
-    show_content = st.checkbox('Show Content', value=False)
+    show_content = st.checkbox('Show content', value=False)
 
-    if st.button('Fetch Data'):
-        data = query_elasticsearch(selected_province, selected_district)
+    if st.button('Fetch Sri Lanka Data'):
+        data = query_elasticsearch_srilanka(selected_province, selected_district)
         total_count = len(data)
         st.write(f"Total feeds: {total_count}")
         if data:
@@ -76,7 +45,51 @@ def main():
                 st.write(f"Showing data for Province: {selected_province} and District: {selected_district}")
 
             df = format_data(data, show_content)
-            st.dataframe(df, width=1200)  # Adjust the width as needed
+            st.dataframe(df, width=1800)
+        else:
+            st.write("No data found.")
+
+
+def handle_india_mapping():
+    # State selection
+    states = ['haryana', 'jammu and kashmir', 'jharkhand']
+    selected_state = st.selectbox('Select State', states)
+
+    mapping_indices = {
+        'haryana': 'constituency_mapping_haryana',
+        'jammu and kashmir': 'constituency_mapping_jammu_and_kashmir',
+        'jharkhand': 'constituency_mapping_jharkhand'
+    }
+
+    state_news_indices = {
+        'haryana': 'haryana_raw_data',
+        'jammu and kashmir': 'jammu_and_kashmir_raw_data',
+        'jharkhand': 'jharkhand_raw_data',
+    }
+
+    selected_index = mapping_indices.get(selected_state)
+    unique_districts = get_districts_by_state(selected_index)
+
+    # Add "All Districts" option
+    unique_districts.insert(0, "All Districts")
+
+    selected_district = st.selectbox('Select District (Optional)', unique_districts)
+    selected_news_index = state_news_indices.get(selected_state)
+    show_content = st.checkbox('Show Content', value=False)
+
+    if st.button('Fetch India Data'):
+        # Adjust the query based on whether "All Districts" is selected
+        if selected_district == "All Districts":
+            data = query_elasticsearch_india(selected_news_index, selected_district)
+        else:
+            data = query_elasticsearch_india(selected_news_index, selected_district)
+
+        total_count = len(data)
+        st.write(f"Total feeds for selected params: {total_count}")
+        if data:
+            st.write(f"Showing data for State: {selected_state}, District: {selected_district}")
+            df = format_india_data(data, show_content)
+            st.dataframe(df, width=1800)
         else:
             st.write("No data found.")
 
@@ -100,9 +113,8 @@ def get_unique_provinces_and_districts():
             }
         }
     }
-
     try:
-        province_response = es.search(index=ES_INDEX, body=province_query)
+        province_response = es.search(index="srilanka_raw_data", body=province_query)
         provinces = province_response['aggregations']['provinces']['unique_provinces']['buckets']
         unique_provinces = [bucket['key'] for bucket in provinces]
         return unique_provinces, []
@@ -150,7 +162,7 @@ def get_districts_by_province(province):
     }
 
     try:
-        district_response = es.search(index=ES_INDEX, body=district_query)
+        district_response = es.search(index="srilanka_raw_data", body=district_query)
         districts = district_response['aggregations']['provinces']['province_filter']['districts']['unique_districts']['buckets']
         unique_districts = [bucket['key'] for bucket in districts]
         return unique_districts
@@ -160,13 +172,14 @@ def get_districts_by_province(province):
     except Exception as e:
         st.error(f"An error occurred: {e}")
         return []
-def query_elasticsearch(province, district):
+
+def query_elasticsearch_srilanka(province, district):
     if province == 'All Provinces':
             query = {
               "query": {
                 "match_all": {}
               },
-              "size": 5000,
+              "size": 10000,
               "sort": [
                 {
                   "sri_lanka.province.district.news.datetime": {
@@ -262,14 +275,14 @@ def query_elasticsearch(province, district):
             ]
 
         }
-
-
     try:
-        response = es.search(index=ES_INDEX, body=query)
+        response = es.search(index="srilanka_raw_data", body=query)
         return response['hits']['hits']
     except Exception as e:
         st.error(f"An error occurred: {e}")
         return []
+
+
 def format_data(data, show_content):
     rows = []
     for hit in data:
@@ -315,6 +328,120 @@ def format_data(data, show_content):
                     ])
 
     df = pd.DataFrame(rows, columns=['ID', 'URL', 'Content', 'Likes', 'Views', 'Shares', 'Media', 'Source', 'datetime'])
+    return df
+
+def get_districts_by_state(index):
+    query = {
+        "size": 0,
+        "aggs": {
+            "unique_districts": {
+                "terms": {
+                    "field": "district.keyword",
+                    "size": 100
+                }
+            }
+        }
+    }
+    try:
+        response = es.search(index=index, body=query)
+        districts = response['aggregations']['unique_districts']['buckets']
+        return [bucket['key'] for bucket in districts]
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
+        return []
+
+
+def query_elasticsearch_india(index, district):
+    if district == "All Districts":
+
+        query = {
+            "query": {
+                "match_all": {
+
+                }
+            },
+            "size": 5000,
+            "sort": [
+                {
+                    "news.datetime": {
+                        "order": "desc",
+                        "nested": {
+                            "path": "news"
+                        }
+                    }
+                }
+            ]
+        }
+    else:
+        query = {
+            "query": {
+                "bool": {
+                    "must": [
+                        {
+                            "term": {
+                                "district": district
+                            }
+                        }
+                    ]
+                }
+            },
+            "size": 5000,
+            "sort": [
+                {
+                    "news.datetime": {
+                        "order": "desc",
+                        "nested": {
+                            "path": "news"
+                        }
+                    }
+                }
+            ]
+        }
+
+    try:
+        response = es.search(index=index, body=query)
+        return response['hits']['hits']
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
+        return []
+
+
+def format_india_data(data, show_content):
+    rows = []
+
+    for hit in data:
+        source = hit.get('_source', {})
+        news_list = source.get('news', [])
+        if not isinstance(news_list, list):
+            news_list = [news_list]
+        for news in news_list:
+            content = news.get('content', '')
+            if not show_content and content:
+                content = content[:50]
+            media = news.get('media', [])
+            if not isinstance(media, list):
+                if media is None:
+                    media = []
+                elif isinstance(media, str):
+                    media = [media]
+                else:
+                    print(f"Unexpected media type: {type(media)} - {media}")
+                    media = []
+            rows.append([
+                str(news.get('id', '')[:10]),
+                str(news.get('url', '')),
+                content,
+                news.get('likes', 'N/A'),
+                news.get('views', 'N/A'),
+                news.get('shares', 'N/A'),
+                ', '.join(media),
+                news.get('source', 'N/A'),
+                news.get('datetime', 'N/A'),
+            ])
+
+    # Create DataFrame
+    df = pd.DataFrame(rows, columns=['ID', 'URL', 'Content', 'Likes', 'Views', 'Shares', 'Media', 'Source', 'Datetime'])
+
     return df
 
 if __name__ == '__main__':
