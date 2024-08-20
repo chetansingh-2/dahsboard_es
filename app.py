@@ -7,8 +7,13 @@ es = Elasticsearch(
     cloud_id=os.getenv("cloud_id"),
     api_key=os.getenv("api_key")
 )
+
+# es = Elasticsearch(
+#     cloud_id="social_data:Y2VudHJhbGluZGlhLmF6dXJlLmVsYXN0aWMtY2xvdWQuY29tOjQ0MyRjMjFiZjk3YTE0ZTY0ZDlkOTc0MDJmZjJmNTY3YmIyYiQ1Mjc0MjY4MmY2MTM0NDdjYTE3MjBmZGZkNDI5ZDJmMQ==",
+#     api_key="TndRRjZKQUJ1bms0VS1NZkJKNjc6WFhQTjhPMmJTSG1RTDc0dWh6ZThWUQ=="
+# )
 def main():
-    st.title('News Feeds and Constituency Mapping Dashboard')
+    st.title('News Feeds of India and Sri Lanka')
     tab1, tab2 = st.tabs(["Sri Lanka News Feeds", "India News Feeds"])
     with tab1:
         st.header("Sri Lanka News Feeds")
@@ -31,7 +36,12 @@ def handle_sri_lanka_feed():
         selected_district = None
 
     show_content = st.checkbox('Show content', value=False)
-
+    warning_text = """
+        <div style='position: fixed; bottom: 10px; width: 50%; background-color: #f8d7da; padding: 10px; text-align: left; color: #721c24; font-size: 14px; border-top: 1px solid #f5c6cb;'>
+            ⚠️ Note: Avoid querying large samples when not required (e.g. fetching entire state data). 
+        </div>
+        """
+    st.markdown(warning_text, unsafe_allow_html=True)
     if st.button('Fetch Sri Lanka Data'):
         data = query_elasticsearch_srilanka(selected_province, selected_district)
         total_count = len(data)
@@ -76,7 +86,12 @@ def handle_india_mapping():
     selected_district = st.selectbox('Select District (Optional)', unique_districts)
     selected_news_index = state_news_indices.get(selected_state)
     show_content = st.checkbox('Show Content', value=False)
-
+    warning_text = """
+           <div style='position: fixed; bottom: 10px; width: 50%; background-color: #f8d7da; padding: 10px; text-align: left; color: #721c24; font-size: 14px; border-top: 1px solid #f5c6cb;'>
+               ⚠️ Note: Avoid querying large samples when not required (e.g. fetching entire state data). 
+           </div>
+           """
+    st.markdown(warning_text, unsafe_allow_html=True)
     if st.button('Fetch India Data'):
         # Adjust the query based on whether "All Districts" is selected
         if selected_district == "All Districts":
