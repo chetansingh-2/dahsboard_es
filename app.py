@@ -246,7 +246,7 @@ def query_elasticsearch_srilanka(province, district):
                         ]
                     }
                 },
-            "size": 5000,
+            "size": 10000,
                 "sort": [
                     {
                         "sri_lanka.province.district.news.datetime": {
@@ -277,7 +277,7 @@ def query_elasticsearch_srilanka(province, district):
               }
             }
           },
-            "size": 5000,
+            "size": 10000,
             "sort": [
                 {
                     "sri_lanka.province.district.news.datetime": {
@@ -352,7 +352,7 @@ def get_districts_by_state(index):
             "unique_districts": {
                 "terms": {
                     "field": "district.keyword",
-                    "size": 100
+                    "size": 1000
                 }
             }
         }
@@ -375,7 +375,7 @@ def query_elasticsearch_india(index, district):
 
                 }
             },
-            "size": 5000,
+            "size": 10000,
             "sort": [
                 {
                     "news.datetime": {
@@ -400,7 +400,7 @@ def query_elasticsearch_india(index, district):
                     ]
                 }
             },
-            "size": 5000,
+            "size": 10000,
             "sort": [
                 {
                     "news.datetime": {
