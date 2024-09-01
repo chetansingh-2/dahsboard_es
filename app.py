@@ -8,10 +8,7 @@ es = Elasticsearch(
     api_key=os.getenv("api_key")
 )
 
-# es = Elasticsearch(
-#     cloud_id="social_data:Y2VudHJhbGluZGlhLmF6dXJlLmVsYXN0aWMtY2xvdWQuY29tOjQ0MyRjMjFiZjk3YTE0ZTY0ZDlkOTc0MDJmZjJmNTY3YmIyYiQ1Mjc0MjY4MmY2MTM0NDdjYTE3MjBmZGZkNDI5ZDJmMQ==",
-#     api_key="TndRRjZKQUJ1bms0VS1NZkJKNjc6WFhQTjhPMmJTSG1RTDc0dWh6ZThWUQ=="
-# )
+
 def main():
     st.title('News Feeds of India and Sri Lanka')
     tab1, tab2 = st.tabs(["Sri Lanka News Feeds", "India News Feeds"])
@@ -95,11 +92,11 @@ def handle_india_mapping():
     if st.button('Fetch India Data'):
         # Adjust the query based on whether "All Districts" is selected
         if selected_district == "All Districts":
-            data = query_elasticsearch_india(selected_news_index, selected_district)
+            data,total_count= query_elasticsearch_india(selected_news_index, selected_district)
         else:
-            data = query_elasticsearch_india(selected_news_index, selected_district)
+            data, _ = query_elasticsearch_india(selected_news_index, selected_district)
 
-        total_count = len(data)
+            total_count = len(data)
         st.write(f"Total feeds for selected params: {total_count}")
         if data:
             st.write(f"Showing data for State: {selected_state}, District: {selected_district}")
@@ -368,12 +365,23 @@ def get_districts_by_state(index):
 
 def query_elasticsearch_india(index, district):
     if district == "All Districts":
+        # Get the total count of documents
+        try:
+            count_query = {
+                "query": {
+                    "match_all": {}
+                }
+            }
+            total_count_response = es.count(index=index, body=count_query)
+            total_count = total_count_response['count']
+        except Exception as e:
+            st.error(f"An error occurred while getting the count: {e}")
+            total_count = 0
 
+        # Get only the first 10,000 documents
         query = {
             "query": {
-                "match_all": {
-
-                }
+                "match_all": {}
             },
             "size": 10000,
             "sort": [
@@ -388,6 +396,7 @@ def query_elasticsearch_india(index, district):
             ]
         }
     else:
+        total_count = None
         query = {
             "query": {
                 "bool": {
@@ -415,10 +424,13 @@ def query_elasticsearch_india(index, district):
 
     try:
         response = es.search(index=index, body=query)
-        return response['hits']['hits']
+        documents = response['hits']['hits']
     except Exception as e:
-        st.error(f"An error occurred: {e}")
-        return []
+        st.error(f"An error occurred while searching: {e}")
+        documents = []
+        total_count = 0
+
+    return documents, total_count
 
 
 def format_india_data(data, show_content):
