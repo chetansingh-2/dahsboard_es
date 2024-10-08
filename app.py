@@ -3,11 +3,15 @@ import pandas as pd
 import streamlit as st
 from elasticsearch import Elasticsearch
 
-es = Elasticsearch(
-    cloud_id=os.getenv("cloud_id"),
-    api_key=os.getenv("api_key")
-)
+# es = Elasticsearch(
+#     cloud_id=os.getenv("cloud_id"),
+#     api_key=os.getenv("api_key")
+# )
 
+es = Elasticsearch(
+    cloud_id="social_data:Y2VudHJhbGluZGlhLmF6dXJlLmVsYXN0aWMtY2xvdWQuY29tOjQ0MyRjMjFiZjk3YTE0ZTY0ZDlkOTc0MDJmZjJmNTY3YmIyYiQ1Mjc0MjY4MmY2MTM0NDdjYTE3MjBmZGZkNDI5ZDJmMQ==",
+    api_key="TndRRjZKQUJ1bms0VS1NZkJKNjc6WFhQTjhPMmJTSG1RTDc0dWh6ZThWUQ=="
+)
 
 def main():
     st.title('News Feeds of India and Sri Lanka')
@@ -432,7 +436,6 @@ def query_elasticsearch_india(index, district):
 
     return documents, total_count
 
-
 def format_india_data(data, show_content):
     rows = []
 
@@ -446,14 +449,12 @@ def format_india_data(data, show_content):
             if not show_content and content:
                 content = content[:50]
             media = news.get('media', [])
-            if not isinstance(media, list):
-                if media is None:
-                    media = []
-                elif isinstance(media, str):
-                    media = [media]
-                else:
-                    print(f"Unexpected media type: {type(media)} - {media}")
-                    media = []
+            if media is None:
+                media = []
+            elif not isinstance(media, list):
+                media = [media]
+            # Ensure all elements in media are strings and handle None values
+            media = [str(m) if m is not None else '' for m in media]
             rows.append([
                 str(news.get('id', '')[:10]),
                 str(news.get('url', '')),
@@ -468,8 +469,6 @@ def format_india_data(data, show_content):
 
     # Create DataFrame
     df = pd.DataFrame(rows, columns=['ID', 'URL', 'Content', 'Likes', 'Views', 'Shares', 'Media', 'Source', 'Datetime'])
-
     return df
-
 if __name__ == '__main__':
     main()
